@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { getDynamicBotImage } = require('../lib/dynamicImage');
+const { getPrefix } = require('../lib/prefix');
 
 // Format uptime properly
 function formatUptime(seconds) {
@@ -103,11 +104,12 @@ function formatLagosTime() {
 }
 
 async function helpCommand(sock, chatId, message) {
+    const currentPrefix = getPrefix();
     const helpMessage = `
 ┌ ❏ *⌜ 𝐆𝐎𝐃𝐒𝐙𝐄𝐀𝐋 𝐗𝐌𝐃 ⌟* ❏ 
 │
 ├◆ ᴏᴡɴᴇʀ: ${settings.botOwner || 'Godszeal Tech'}
-├◆ ᴘʀᴇғɪx: .
+├◆ ᴘʀᴇғɪx: ${currentPrefix}
 ├◆ ᴜsᴇʀ: ${message.pushName}
 ├◆ ᴘʟᴀɴ: Premium ${'✓'}
 ├◆ ᴠᴇʀsɪᴏɴ: ${settings.version || '2.0.5'}
@@ -175,6 +177,7 @@ async function helpCommand(sock, chatId, message) {
 ┌ ❏ *⌜ OWNER COMMANDS ⌟* ❏
 │
 ├◆ .mode
+├◆ .setprefix <symbol>
 ├◆ .autostatus
 ├◆ .clearsession
 ├◆ .antidelete
@@ -186,7 +189,7 @@ async function helpCommand(sock, chatId, message) {
 ├◆ .autostatus react <on/off>
 ├◆ .autotyping <on/off>
 ├◆ .autoread <on/off>
-├◆ .anticall <on/off
+├◆ .anticall <on/off>
 └ ❏
 
 ┌ ❏ *⌜ IMAGE/STICKER ⌟* ❏
