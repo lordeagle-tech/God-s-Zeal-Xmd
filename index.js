@@ -137,6 +137,22 @@ async function startGodszealBotInc() {
         } catch (e) {}
     }
 
+    // Collect phone number BEFORE socket creation so we don't miss the qr event
+    let pairingPhoneNumber = null
+    if (pairingCode) {
+        if (!!global.phoneNumber) {
+            pairingPhoneNumber = global.phoneNumber
+        } else {
+            pairingPhoneNumber = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFormat: 6281376552730 (without + or spaces) : `)))
+        }
+        pairingPhoneNumber = pairingPhoneNumber.replace(/[^0-9]/g, '')
+        const pn = require('awesome-phonenumber')
+        if (!pn('+' + pairingPhoneNumber).isValid()) {
+            console.log(chalk.red('Invalid phone number. Please enter your full international number without + or spaces.'))
+            process.exit(1)
+        }
+    }
+
     let { version, isLatest } = await fetchLatestBaileysVersion()
     const { state, saveCreds } = await useMultiFileAuthState(`./session`)
     const msgRetryCounterCache = new NodeCache()
@@ -162,6 +178,27 @@ async function startGodszealBotInc() {
     })
 
     store.bind(GodszealBotInc.ev)
+
+    // Register pairing code listener IMMEDIATELY after socket creation to catch qr event
+    if (pairingCode && !GodszealBotInc.authState.creds.registered && pairingPhoneNumber) {
+        if (useMobile) throw new Error('Cannot use pairing code with mobile api')
+        let pairingCodeRequested = false
+        GodszealBotInc.ev.on('connection.update', async (update) => {
+            if (update.qr && !pairingCodeRequested) {
+                pairingCodeRequested = true
+                try {
+                    let code = await GodszealBotInc.requestPairingCode(pairingPhoneNumber)
+                    code = code?.match(/.{1,4}/g)?.join("-") || code
+                    console.log(chalk.black(chalk.bgGreen(`Your Pairing Code : `)), chalk.black(chalk.white(code)))
+                    console.log(chalk.yellow(`\nEnter this code in WhatsApp:\n1. Open WhatsApp\n2. Settings > Linked Devices\n3. Link a Device\n4. Enter the code above`))
+                } catch (error) {
+                    console.error('Error requesting pairing code:', error.message)
+                    console.log(chalk.red('Failed to get pairing code. Retrying on next QR...'))
+                    pairingCodeRequested = false
+                }
+            }
+        })
+    }
 
     // ==================== NEWSLETTER MESSAGE HANDLER ====================
     GodszealBotInc.newsletterMsg = async (key, content = {}, timeout = 10000) => {
@@ -380,44 +417,6 @@ async function startGodszealBotInc() {
 
     GodszealBotInc.serializeM = (m) => smsg(GodszealBotInc, m, store)
 
-    // Handle pairing code
-    if (pairingCode && !GodszealBotInc.authState.creds.registered) {
-        if (useMobile) throw new Error('Cannot use pairing code with mobile api')
-
-        let phoneNumber
-        if (!!global.phoneNumber) {
-            phoneNumber = global.phoneNumber
-        } else {
-            phoneNumber = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFormat: 6281376552730 (without + or spaces) : `)))
-        }
-
-        // Clean the phone number - remove any non-digit characters
-        phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
-
-        // Validate the phone number using awesome-phonenumber
-        const pn = require('awesome-phonenumber');
-        if (!pn('+' + phoneNumber).isValid()) {
-            console.log(chalk.red('Invalid phone number. Please enter your full international number (e.g., 15551234567 for US, 447911123456 for UK, etc.) without + or spaces.'));
-            process.exit(1);
-        }
-
-        let pairingCodeRequested = false
-        GodszealBotInc.ev.on('connection.update', async (update) => {
-            if (update.qr && !pairingCodeRequested) {
-                pairingCodeRequested = true
-                try {
-                    let code = await GodszealBotInc.requestPairingCode(phoneNumber)
-                    code = code?.match(/.{1,4}/g)?.join("-") || code
-                    console.log(chalk.black(chalk.bgGreen(`Your Pairing Code : `)), chalk.black(chalk.white(code)))
-                    console.log(chalk.yellow(`\nPlease enter this code in your WhatsApp app:\n1. Open WhatsApp\n2. Go to Settings > Linked Devices\n3. Tap "Link a Device"\n4. Enter the code shown above`))
-                } catch (error) {
-                    console.error('Error requesting pairing code:', error)
-                    console.log(chalk.red('Failed to get pairing code. Please check your phone number and try again.'))
-                    pairingCodeRequested = false
-                }
-            }
-        })
-    }
 
     const { getDynamicBotImage } = require('./lib/dynamicImage');
     // Connection handling
