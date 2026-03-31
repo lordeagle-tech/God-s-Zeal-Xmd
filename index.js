@@ -122,12 +122,16 @@ const question = (text) => {
 
          
 async function startGodszealBotInc() {
-    // Clear incomplete/unregistered session files so a fresh pairing code is generated
+    // Check existing session state FIRST
     const credsPath = './session/creds.json'
+    let sessionIsRegistered = false
     if (fs.existsSync(credsPath)) {
         try {
             const existingCreds = JSON.parse(fs.readFileSync(credsPath, 'utf-8'))
-            if (!existingCreds.registered) {
+            if (existingCreds.registered) {
+                sessionIsRegistered = true
+            } else {
+                // Clear incomplete/unregistered session so fresh pairing can happen
                 const sessionFiles = fs.readdirSync('./session')
                 for (const file of sessionFiles) {
                     try { fs.unlinkSync(`./session/${file}`) } catch (e) {}
@@ -137,9 +141,9 @@ async function startGodszealBotInc() {
         } catch (e) {}
     }
 
-    // Collect phone number BEFORE socket creation so we don't miss the qr event
+    // Only ask for phone number when pairing is actually needed (no valid session)
     let pairingPhoneNumber = null
-    if (pairingCode) {
+    if (pairingCode && !sessionIsRegistered) {
         if (!!global.phoneNumber) {
             pairingPhoneNumber = global.phoneNumber
         } else {

@@ -89,21 +89,30 @@ ${'='.repeat(30)}
 💡 *Type .help for command list*
 ${'='.repeat(30)}`;
 
-        // Send the alive message with animated image
-        await sock.sendMessage(chatId, {
-            video: { url: 'https://files.catbox.moe/h43im9.mp4' },
-            caption: aliveMessage,
-            contextInfo: {
-                forwardingScore: 1,
-                isForwarded: true,
-                mentionedJid: [message.key.remoteJid],
-                forwardedNewsletterMessageInfo: {
-                    newsletterJid: '120363269950668068@newsletter',
-                    newsletterName: '❦ ════ •⊰❂ GODSZEAL XMD  ❂⊱• ════ ❦',
-                    serverMessageId: -1
-                }
+        const contextInfo = {
+            forwardingScore: 1,
+            isForwarded: true,
+            mentionedJid: [message.key.remoteJid],
+            forwardedNewsletterMessageInfo: {
+                newsletterJid: '120363269950668068@newsletter',
+                newsletterName: '❦ ════ •⊰❂ GODSZEAL XMD  ❂⊱• ════ ❦',
+                serverMessageId: -1
             }
-        }, { quoted: message });
+        };
+
+        // Try sending with video, fall back to text-only if video is unavailable
+        try {
+            await sock.sendMessage(chatId, {
+                video: { url: 'https://files.catbox.moe/h43im9.mp4' },
+                caption: aliveMessage,
+                contextInfo
+            }, { quoted: message });
+        } catch (videoError) {
+            await sock.sendMessage(chatId, {
+                text: aliveMessage,
+                contextInfo
+            }, { quoted: message });
+        }
 
     } catch (error) {
         console.error('Alive Command Error:', error);
