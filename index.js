@@ -386,17 +386,22 @@ async function startGodszealBotInc() {
             process.exit(1);
         }
 
-        setTimeout(async () => {
-            try {
-                let code = await GodszealBotInc.requestPairingCode(phoneNumber)
-                code = code?.match(/.{1,4}/g)?.join("-") || code
-                console.log(chalk.black(chalk.bgGreen(`Your Pairing Code : `)), chalk.black(chalk.white(code)))
-                console.log(chalk.yellow(`\nPlease enter this code in your WhatsApp app:\n1. Open WhatsApp\n2. Go to Settings > Linked Devices\n3. Tap "Link a Device"\n4. Enter the code shown above`))
-            } catch (error) {
-                console.error('Error requesting pairing code:', error)
-                console.log(chalk.red('Failed to get pairing code. Please check your phone number and try again.'))
+        let pairingCodeRequested = false
+        GodszealBotInc.ev.on('connection.update', async (update) => {
+            if (update.qr && !pairingCodeRequested) {
+                pairingCodeRequested = true
+                try {
+                    let code = await GodszealBotInc.requestPairingCode(phoneNumber)
+                    code = code?.match(/.{1,4}/g)?.join("-") || code
+                    console.log(chalk.black(chalk.bgGreen(`Your Pairing Code : `)), chalk.black(chalk.white(code)))
+                    console.log(chalk.yellow(`\nPlease enter this code in your WhatsApp app:\n1. Open WhatsApp\n2. Go to Settings > Linked Devices\n3. Tap "Link a Device"\n4. Enter the code shown above`))
+                } catch (error) {
+                    console.error('Error requesting pairing code:', error)
+                    console.log(chalk.red('Failed to get pairing code. Please check your phone number and try again.'))
+                    pairingCodeRequested = false
+                }
             }
-        }, 3000)
+        })
     }
 
     const { getDynamicBotImage } = require('./lib/dynamicImage');
