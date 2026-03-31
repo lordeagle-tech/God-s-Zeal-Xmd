@@ -122,6 +122,21 @@ const question = (text) => {
 
          
 async function startGodszealBotInc() {
+    // Clear incomplete/unregistered session files so a fresh pairing code is generated
+    const credsPath = './session/creds.json'
+    if (fs.existsSync(credsPath)) {
+        try {
+            const existingCreds = JSON.parse(fs.readFileSync(credsPath, 'utf-8'))
+            if (!existingCreds.registered) {
+                const sessionFiles = fs.readdirSync('./session')
+                for (const file of sessionFiles) {
+                    try { fs.unlinkSync(`./session/${file}`) } catch (e) {}
+                }
+                console.log(chalk.yellow('⚠️  Previous session was incomplete. Cleared for fresh pairing...'))
+            }
+        } catch (e) {}
+    }
+
     let { version, isLatest } = await fetchLatestBaileysVersion()
     const { state, saveCreds } = await useMultiFileAuthState(`./session`)
     const msgRetryCounterCache = new NodeCache()
