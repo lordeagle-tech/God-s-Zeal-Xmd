@@ -26,6 +26,7 @@ setInterval(() => {
 }, 3 * 60 * 60 * 1000);
 
 const settings = require('./settings');
+const { getPrefix } = require('./lib/prefix');
 require('./config.js');
 const { isBanned } = require('./lib/isBanned');
 const yts = require('yt-search');
@@ -141,6 +142,7 @@ const { igsCommand } = require('./commands/igs');
 const { anticallCommand, readState: readAnticallState } = require('./commands/anticall');
 const { pmblockerCommand, readState: readPmBlockerState } = require('./commands/pmblocker');
 const settingsCommand = require('./commands/settings');
+const setprefixCommand = require('./commands/setprefix');
 const soraCommand = require('./commands/sora');
 const movieCommand = require('./commands/movie');
 const tempnumCommand = require('./commands/tempnum');
@@ -217,7 +219,7 @@ async function handleMessages(sock, messageUpdate, printLog) {
             }
         }
 
-        const userMessage = (
+        let userMessage = (
             message.message?.conversation?.trim() ||
             message.message?.extendedTextMessage?.text?.trim() ||
             message.message?.imageMessage?.caption?.trim() ||
@@ -234,7 +236,8 @@ async function handleMessages(sock, messageUpdate, printLog) {
             '';
 
         // Only log command usage
-        if (userMessage.startsWith('.')) {
+        const prefix = getPrefix();
+        if (userMessage.startsWith(prefix)) {
             console.log(`📝 Command used in ${isGroup ? 'group' : 'private'}: ${userMessage}`);
         }
         // Read bot mode once; don't early-return so moderation can still run in private mode
@@ -301,7 +304,7 @@ async function handleMessages(sock, messageUpdate, printLog) {
         }
 
         // Then check for command prefix
-        if (!userMessage.startsWith('.')) {
+        if (!userMessage.startsWith(prefix)) {
             // Show typing indicator if autotyping is enabled
             await handleAutotypingForMessage(sock, chatId, userMessage);
 
@@ -373,6 +376,9 @@ async function handleMessages(sock, messageUpdate, printLog) {
         // Command handlers - Execute commands immediately without waiting for typing indicator
         // We'll show typing indicator after command execution if needed
         let commandExecuted = false;
+
+        // Normalize userMessage: replace dynamic prefix with '.' so all case statements work unchanged
+        if (prefix !== '.') userMessage = '.' + userMessage.slice(prefix.length);
 
         switch (true) {
             case userMessage === '.simage': {
@@ -451,6 +457,11 @@ async function handleMessages(sock, messageUpdate, printLog) {
 
             case userMessage === '.settings':
                 await settingsCommand(sock, chatId, message);
+                break;
+
+            case userMessage.startsWith('.setprefix'):
+                await setprefixCommand(sock, chatId, message, userMessage.slice('.setprefix'.length).trim());
+                commandExecuted = true;
                 break;
             case userMessage.startsWith('.mode'):
                 // Check if sender is the owner
@@ -1219,7 +1230,7 @@ async function handleMessages(sock, messageUpdate, printLog) {
             });
         }
 
-        if (userMessage.startsWith('.')) {
+        if (userMessage.startsWith(prefix)) {
             // After command is processed successfully
             await addCommandReaction(sock, message);
         }
